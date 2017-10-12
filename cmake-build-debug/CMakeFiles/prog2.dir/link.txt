@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/prog2.dir/encode.c.o CMakeFiles/prog2.dir/util.c.o  -o prog2 

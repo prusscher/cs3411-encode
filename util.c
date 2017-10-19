@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include "util.h"
 
+int printing = 0;
+
 /**
  * Returns 1 if a file exists and 0 if the file doesn't exist
  * char * file: The filename to check for existence
@@ -52,39 +54,82 @@ void fileError(const char * errorMsg, char * file) {
  * 
  * */
 unsigned char qread(int fileDes, qbyte * readBuffer, int size) {
-    if(size <= 0 || size > 7) {
+    // Be sure that only between 1 and 8 bits are requested
+    if(size <= 0 || size > 8) {
         write(2, "Invalid Size, Canceling qwrite\n", strlen("Invalid Size, Canceling qwrite\n"));
         return 0;
     }
 
-    // Check to see if the readbuffer has enough stored data to satifsy our request
-    if(readBuffer->index < size) {
-        unsigned char in;
-        int bytesR = read(fileDes, &in, sizeof(unsigned char));
-        
-        if(bytesR == -1) {
-            write(2, "Invalid Read, Canceling qread\n", strlen("Invalid Read, Canceling qread\n"));    
-            return 0;
-        }
-        
-        printf(BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(in));         
-        readBuffer->data = (readBuffer->data << 8) | in;
-        readBuffer->index = readBuffer->index + 8;
+    if(printing) printf("qread: %d\n", size);
+
+    int bytesW;
+
+    unsigned char c1 = readBuffer->data >> 8;
+    unsigned char c2 = readBuffer->data;
+    
+    if(printing) {    
+        printf("Pre add: \t"BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY(c1));
+        printf(BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY(c2));    
+        printf(" - %d\n", readBuffer->index);
     }
 
-    // We now have enough data in the buffer
-    
-    // Create our output and set it to the amount of data that we want from the buffer
-    unsigned char outputByte;
-    outputByte = (unsigned char)(readBuffer->data >> (readBuffer->index - size));
-    
-    // Shift the bits that we used into oblivion
-    int shift = 16 - (readBuffer->index) + 1;
-    readBuffer->data = (readBuffer->data << shift) >> shift;
-    readBuffer->index = readBuffer->index-size;
+    // Check if there is enough information in the buffer
+    if(readBuffer->index < 8) {
+        // If there isn't grab another byte from the file (stdin)
+        readBuffer->data = readBuffer->data << 8;
 
-    printf(BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(outputByte)); 
+        // Our stuff is pre-read from stdin, just grab it
+        unsigned char add;// = buffer;
+        bytesW = read(fileDes, &add, sizeof(unsigned char));
 
+        if(printing) printf("Read: %c - %d\n", add, add);
+
+        readBuffer->data = readBuffer->data | add;
+        readBuffer->index = readBuffer->index + 8;
+
+        // File Read Error
+        if(bytesW == -1) {
+            write(2, "qread: File read error when trying to read to queued byte", strlen("qread: File read error when trying to read to queued byte"));
+            return -1;
+        }
+    
+        if(printing) {
+            c1 = readBuffer->data >> 8;
+            c2 = readBuffer->data;
+            printf("Post add: \t"BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY(c1));
+            printf(BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY(c2));    
+            printf(" - %d\n", readBuffer->index);
+        }
+    }
+    // Once we have enough information in the buffer, grab only the information requested
+    
+    // Grab the information from the buffer and shift it to get only the data we want
+    unsigned char outputByte = 0;
+    outputByte = (unsigned char)(readBuffer->data >> (readBuffer->index-size));
+
+    // Remove the information from the buffer as we have it
+    uint16_t mask = ~0;
+    mask = mask >> (16-(readBuffer->index - size)); // Make all of the bits we still want 1
+    
+    if(printing) {        
+        printf("Mask: \t\t"BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY((unsigned char)(mask >> 8)));    
+        printf(BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY((unsigned char)(mask)));    
+    }
+
+    // Mask out what we dont want and adjust the index accordingly
+    readBuffer->data = readBuffer->data & mask;
+    readBuffer->index = readBuffer->index - size;
+
+    if(printing) {    
+        c1 = readBuffer->data >> 8;
+        c2 = readBuffer->data;
+        printf("Post remove: \t"BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY(c1));
+        printf(BYTE_TO_BINARY_PATTERN" ", BYTE_TO_BINARY(c2));    
+        printf(" - %d\n", readBuffer->index);
+
+        printf("Output: "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(outputByte)); 
+    }
+    
     return outputByte;
 }
 

@@ -1,5 +1,6 @@
 const char * fileReadError = "Cancelling - File read error: ";
 const char * archiveExistError = "Archive file of input already exists: ";
+const char * fileExistsError = "File to output to already exists: ";
 const char * dictWriteError = "Error writing the dictionary to stdout";
 const char * wrongDictElement = "Byte wasn't in dictionary, something is broken.\n";
 

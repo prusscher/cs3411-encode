@@ -1,3 +1,0 @@
-/home/ups/Documents/cs3411/prog2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/ups/Documents/cs3411/prog2/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/ups/Documents/cs3411/prog2/cmake-build-debug/CMakeFiles/prog2.dir
